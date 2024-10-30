@@ -146,7 +146,7 @@ const isTouchEvent = (event: MouseEvent | TouchEvent): event is TouchEvent => {
 const isMouseEvent = (event: MouseEvent | TouchEvent): event is MouseEvent => {
   return Boolean(
     ((event as MouseEvent).clientX || (event as MouseEvent).clientX === 0) &&
-      ((event as MouseEvent).clientY || (event as MouseEvent).clientY === 0),
+    ((event as MouseEvent).clientY || (event as MouseEvent).clientY === 0),
   );
 };
 
@@ -364,9 +364,9 @@ export class Resizable extends React.PureComponent<ResizableProps, State> {
 
   public static defaultProps = {
     as: 'div',
-    onResizeStart: () => {},
-    onResize: () => {},
-    onResizeStop: () => {},
+    onResizeStart: () => { },
+    onResize: () => { },
+    onResizeStop: () => { },
     enable: {
       top: true,
       right: true,
@@ -589,10 +589,43 @@ export class Resizable extends React.PureComponent<ResizableProps, State> {
     return { maxWidth, maxHeight };
   }
 
+  calculateDynamicResizeRatio(direction: Direction, width: number, height: number): [number, number] {
+    const aspectRatio = Math.max(width / height, height / width);
+
+    if (["right", "left", "bottom", "top"].includes(direction)) {
+      return [1, 1];
+    }
+
+    // More balanced ratio reduction
+    let ratio: number;
+
+    if (aspectRatio <= 1.5) {
+      // Common aspect ratios up to 3:2
+      ratio = 1;
+    } else if (aspectRatio <= 2) {
+      // Common aspect ratios like 16:9 (1.78)
+      ratio = 0.8;
+    } else if (aspectRatio <= 3) {
+      // Starting to get wider/taller
+      ratio = 0.6;
+    } else if (aspectRatio <= 5) {
+      // Getting into unusual territory
+      ratio = 0.3;
+    } else if (aspectRatio <= 10) {
+      // Very extreme
+      ratio = 0.15;
+    } else {
+      // Ultra extreme
+      ratio = 0.05;
+    }
+
+    return [ratio, ratio];
+  }
+
   calculateNewSizeFromDirection(clientX: number, clientY: number) {
     const scale = this.props.scale || 1;
-    const [resizeRatioX, resizeRatioY] = normalizeToPair(this.props.resizeRatio || 1);
     const { direction, original } = this.state;
+    const [resizeRatioX, resizeRatioY] = this.calculateDynamicResizeRatio(direction, original.width, original.height);
     const { lockAspectRatio, lockAspectRatioExtraHeight, lockAspectRatioExtraWidth } = this.props;
     let newWidth = original.width;
     let newHeight = original.height;
